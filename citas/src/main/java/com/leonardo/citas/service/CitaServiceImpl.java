@@ -40,6 +40,10 @@ public class CitaServiceImpl implements CitaService {
     private static final List<EstadoCita> ESTADOS_ACTIVOS_INVALIDOS =
             List.of(EstadoCita.CONFIRMADA, EstadoCita.EN_CURSO);
 
+    // Estados que impiden eliminar lógicamente a un médico.
+    private static final List<EstadoCita> ESTADOS_QUE_IMPIDEN_ELIMINAR_MEDICO =
+            List.of(EstadoCita.PENDIENTE, EstadoCita.CONFIRMADA, EstadoCita.EN_CURSO);
+
     @Override
     @Transactional(readOnly = true)
     public List<CitaResponse> listar() {
@@ -76,19 +80,24 @@ public class CitaServiceImpl implements CitaService {
 
     @Override
     @Transactional(readOnly = true)
-    public void medicoTieneCitasAsignadas(Long idMedico, Long idCitaExcluida) {
+    public void medicoTieneCitasAsignadas(Long idMedico) {
 
         log.info("Validando si el médico tiene una cita activa con los estados: {}",
                 ESTADOS_ACTIVOS_INVALIDOS);
 
-        boolean ocupado = idCitaExcluida == null
-                ? citaRepository.existsByIdMedicoAndEstadoRegistroAndEstadoCitaIn(
-                        idMedico, EstadoRegistro.ACTIVO, ESTADOS_ACTIVOS_INVALIDOS)
-                : citaRepository.existsByIdMedicoAndEstadoRegistroAndEstadoCitaInAndIdNot(
-                        idMedico, EstadoRegistro.ACTIVO, ESTADOS_ACTIVOS_INVALIDOS, idCitaExcluida);
-        if (ocupado) {
+        if (citaRepository.existsByIdMedicoAndEstadoRegistroAndEstadoCitaIn(
+                idMedico, EstadoRegistro.ACTIVO, ESTADOS_ACTIVOS_INVALIDOS))
             throw new ConflictoException("No se puede modificar o eliminar el médico ya que " +
                     "tiene citas en estado: " + ESTADOS_ACTIVOS_INVALIDOS);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void validarEliminacionMedico(Long idMedico) {
+        if (citaRepository.existsByIdMedicoAndEstadoRegistroAndEstadoCitaIn(
+                idMedico, EstadoRegistro.ACTIVO, ESTADOS_QUE_IMPIDEN_ELIMINAR_MEDICO)) {
+            throw new ConflictoException(
+                    "No se puede eliminar el médico: tiene citas PENDIENTES, CONFIRMADAS o EN_CURSO");
         }
     }
 
@@ -109,7 +118,7 @@ public class CitaServiceImpl implements CitaService {
         log.info("Cita registrada");
 
         cambiarDisponibilidadMedicoSegunEstadoCita(
-                medico.id(), cita.getEstadoCita(), cita.getId());
+                medico.id(), cita.getEstadoCita());
 
         return citaMapper.entidadAResponse(
                 cita,
@@ -146,8 +155,8 @@ public class CitaServiceImpl implements CitaService {
 
         log.info("Cita actualizada");
         if (cambiaMedico) {
-            actualizarDisponibilidadMedico(idMedicoAnterior, DisponibilidadMedico.DISPONIBLE.getCodigo(), cita.getId());
-            cambiarDisponibilidadMedicoSegunEstadoCita(medico.id(), cita.getEstadoCita(), cita.getId());
+            actualizarDisponibilidadMedico(idMedicoAnterior, DisponibilidadMedico.DISPONIBLE.getCodigo());
+            cambiarDisponibilidadMedicoSegunEstadoCita(medico.id(), cita.getEstadoCita());
         }
 
         return citaMapper.entidadAResponse(cita, paciente, medico);
@@ -169,7 +178,7 @@ public class CitaServiceImpl implements CitaService {
 
         cambiarDisponibilidadMedicoSegunEstadoCita(
                 cita.getIdMedico(),
-                cita.getEstadoCita(), cita.getId());
+                cita.getEstadoCita());
     }
 
     @Override
@@ -188,7 +197,7 @@ public class CitaServiceImpl implements CitaService {
         if (cita.getEstadoCita() == EstadoCita.PENDIENTE)
             actualizarDisponibilidadMedico(
                     cita.getIdMedico(),
-                    DisponibilidadMedico.DISPONIBLE.getCodigo(), cita.getId());
+                    DisponibilidadMedico.DISPONIBLE.getCodigo());
     }
 
     private void validarPacienteSinCitasActivas(Long idPaciente, Long idCitaExcluida) {
@@ -224,11 +233,11 @@ public class CitaServiceImpl implements CitaService {
         return medicoClient.obtenerMedicoSinEstadoPorId(id);
     }
 
-    private void actualizarDisponibilidadMedico(Long idMedico, Long idDisponibilidad, Long idCitaExcluida) {
+    private void actualizarDisponibilidadMedico(Long idMedico, Long idDisponibilidad) {
 
         log.info("Actualizando disponibilidad del médico en el servicio remoto...");
 
-        medicoClient.actualizarDisponibilidadMedico(idMedico, idDisponibilidad, idCitaExcluida);
+        medicoClient.actualizarDisponibilidadMedico(idMedico, idDisponibilidad);
 
         log.info("Disponibilidad del médico actualizada en el servicio remoto");
     }
@@ -241,18 +250,18 @@ public class CitaServiceImpl implements CitaService {
             throw new ConflictoException("El médico activo no está disponible para consulta");
     }
 
-    private void cambiarDisponibilidadMedicoSegunEstadoCita(Long idMedico, EstadoCita estadoCita, Long idCitaExcluida) {
+    private void cambiarDisponibilidadMedicoSegunEstadoCita(Long idMedico, EstadoCita estadoCita) {
 
         switch (estadoCita) {
 
             case PENDIENTE, CONFIRMADA ->
-                    actualizarDisponibilidadMedico(idMedico, DisponibilidadMedico.NO_DISPONIBLE.getCodigo(), idCitaExcluida);
+                    actualizarDisponibilidadMedico(idMedico, DisponibilidadMedico.NO_DISPONIBLE.getCodigo());
 
             case FINALIZADA, CANCELADA ->
-                    actualizarDisponibilidadMedico(idMedico, DisponibilidadMedico.DISPONIBLE.getCodigo(), idCitaExcluida);
+                    actualizarDisponibilidadMedico(idMedico, DisponibilidadMedico.DISPONIBLE.getCodigo());
 
             case EN_CURSO ->
-                    actualizarDisponibilidadMedico(idMedico, DisponibilidadMedico.EN_CONSULTA.getCodigo(), idCitaExcluida);
+                    actualizarDisponibilidadMedico(idMedico, DisponibilidadMedico.EN_CONSULTA.getCodigo());
         }
     }
 }

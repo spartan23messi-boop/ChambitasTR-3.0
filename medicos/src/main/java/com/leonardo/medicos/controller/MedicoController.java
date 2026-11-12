@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RequestParam;
 
 @RestController
 @Tag(name = "API Médicos", description = "Métodos para la gestión de médicos")
@@ -49,10 +48,9 @@ public class MedicoController extends CrudController<MedicoRequest, MedicoRespon
                     schema = @Schema(implementation = ProblemaDoc.class)))
     public ResponseEntity<Void> actualizarDisponibilidadMedico(
             @PathVariable @Positive(message = "El idMedico debe ser positivo") Long idMedico,
-            @PathVariable @Positive(message = "El idDisponibilidad debe ser positivo") Long idDisponibilidad,
-            @RequestParam(required = false) Long idCitaExcluida
+            @PathVariable @Positive(message = "El idDisponibilidad debe ser positivo") Long idDisponibilidad
     ) {
-        service.actualizarDisponibilidadMedico(idMedico, idDisponibilidad, idCitaExcluida);
+        service.actualizarDisponibilidadMedico(idMedico, idDisponibilidad);
         return ResponseEntity.noContent().build();
     }
 }

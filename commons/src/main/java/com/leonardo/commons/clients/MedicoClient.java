@@ -5,7 +5,6 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 
 @FeignClient(name = "medicos")
 public interface MedicoClient {
@@ -19,7 +18,6 @@ public interface MedicoClient {
     @PutMapping("/{idMedico}/disponibilidad/{idDisponibilidad}")
     void actualizarDisponibilidadMedico(
             @PathVariable Long idMedico,
-            @PathVariable Long idDisponibilidad,
-            @RequestParam("idCitaExcluida") Long idCitaExcluida
+            @PathVariable Long idDisponibilidad
     );
 }

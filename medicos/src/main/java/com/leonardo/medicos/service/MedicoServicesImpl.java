@@ -104,7 +104,7 @@ public class MedicoServicesImpl implements MedicoServices {
     }
 
     @Override
-    public void actualizarDisponibilidadMedico(Long idMedico, Long idDisponibilidad, Long idCitaExcluida) {
+    public void actualizarDisponibilidadMedico(Long idMedico, Long idDisponibilidad) {
 
         Medico medico = obtenerMedicoActivoPorId(idMedico);
 
@@ -114,13 +114,6 @@ public class MedicoServicesImpl implements MedicoServices {
                 .obtenerDisponibilidadPorCodigo(idDisponibilidad);
 
         DisponibilidadMedico disponibilidadAnterior = medico.getDisponibilidad();
-        if (nuevaDisponibilidad == DisponibilidadMedico.DISPONIBLE) {
-            if (idCitaExcluida == null) {
-                citaClient.medicoTieneCitasAsignadas(idMedico);
-            } else {
-                citaClient.medicoTieneCitasAsignadasExcluyendo(idMedico, idCitaExcluida);
-            }
-        }
 
         medico.actualizarDisponibilidad(nuevaDisponibilidad);
 
@@ -137,7 +130,7 @@ public class MedicoServicesImpl implements MedicoServices {
 
         log.info("Eliminando al médico con id: {}", id);
 
-        validarMedicoTieneCitasAgendadas(id);
+        citaClient.validarEliminacionMedico(id);
 
         medico.eliminar();
 

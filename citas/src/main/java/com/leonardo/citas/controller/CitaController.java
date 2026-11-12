@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RequestParam;
 
 
 @RestController
@@ -61,9 +60,18 @@ public class CitaController extends CrudController<CitaRequest, CitaResponse, Ci
     @GetMapping("/id-medico/{idMedico}/citas-asignadas")
     public ResponseEntity<Void> medicoTieneCitasAsignadas(
             @Parameter(description = "Id del medico", example = "1")
-            @PathVariable @Positive(message = "El idMedico debe ser positivo") Long idMedico,
-            @RequestParam(required = false) Long idCitaExcluida){
-        service.medicoTieneCitasAsignadas(idMedico, idCitaExcluida);
+            @PathVariable @Positive(message = "El idMedico debe ser positivo") Long idMedico){
+        service.medicoTieneCitasAsignadas(idMedico);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/id-medico/{idMedico}/validar-eliminacion")
+    @Operation(summary = "Verificar si un médico puede eliminarse lógicamente")
+    @ApiResponse(responseCode = "204", description = "El médico no tiene citas que impidan eliminarlo")
+    @ApiResponse(responseCode = "409", description = "El médico tiene citas pendientes, confirmadas o en curso")
+    public ResponseEntity<Void> validarEliminacionMedico(
+            @PathVariable @Positive(message = "El idMedico debe ser positivo") Long idMedico) {
+        service.validarEliminacionMedico(idMedico);
         return ResponseEntity.noContent().build();
     }
 
