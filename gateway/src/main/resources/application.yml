@@ -1,0 +1,44 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gateway
+  cloud:
+    gateway:
+      server:
+        webflux:
+          x-forwarded:
+            prefix-enable: true
+          routes:
+            # ---------- RUTA medicos----------
+            - id: ruta-medicos
+              uri: lb://medicos
+              predicates:
+                - Path=/api/medicos/**
+              filters:
+                - StripPrefix=2
+
+            # ---------- RUTA pacientes ----------
+            - id: ruta-pacientes
+              uri: lb://pacientes
+              predicates:
+                - Path=/api/pacientes/**
+              filters:
+                - StripPrefix=1
+            # ----------RUTA citas --------------
+            - id: ruta-citas
+              uri: lb://citas
+              predicates:
+                - Path=/api/citas/**
+              filters:
+                - StripPrefix=2
+
+loadbalancer:
+  enable: true
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+  instance:
+    prefer-ip-address: true   # Registrarse con la IP y no con el nombre de host
